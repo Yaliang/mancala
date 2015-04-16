@@ -127,42 +127,95 @@ class Player:
     # However, for your custom player, you may copy this function
     # and modify it so that it uses a different termination condition
     # and/or a different move search order.
-    def alphaBetaMove(self, board, ply, alpha = -INFINITY, beta = INFINITY, maximizingPlayer = True):
-        """ Choose a move with alpha beta pruning.  Returns (score, move) """
-        turn = self
+    def alphaBetaMove(self, board, ply):
+        """ Choose the best move with alpha beta pruning.  Returns (score, move) """
         move = -1
+        score = -INFINITY
+        turn = self
+        alpha = -INFINITY
+        beta = +INFINITY
+        for m in board.legalMoves(self):
+            #for each legal move
+            if ply == 0:
+                #if we're at ply 0, we need to call our eval function & return
+                return (self.score(board), m)
+            if board.gameOver():
+                return (-1, -1)  # Can't make a move, the game is over
+            nb = deepcopy(board)
+            #make a new board
+            nb.makeMove(self, m)
+            #try the move
+            opp = Player(self.opp, self.type, self.ply)
+            s = opp.minValueAlphaBeta(nb, ply-1, turn, alpha, beta)
+            #and see what the opponent would do next
+            if s > score:
+                #if the result is better than our best score so far, save that move,score
+                move = m
+                score = s
+            alpha = max(alpha, score)
+        #return the best score and move so far
+        return score, move
+
+    def maxValueAlphaBeta(self, board, ply, turn, alpha, beta):
+        """ Find the minimax value with alpha-beta pruning for the next move for this player
+        at a given board configuation. Returns score."""
         if board.gameOver():
-            return self.score(board)
-        elif maximizingPlayer:
-            score = -INFINITY
-            for m in board.legalMoves(self):
-                if ply == 0:
-                    return (self.score(board), m)
-                nb = deepcopy(board)
-                nb.makeMove(self, m)
-                s = self.alphaBetaMove(nb, ply-1, alpha, beta, False)
-                if s > score:
-                    move = m
-                    score = s
-                alpha = max(alpha, score)
-                if beta <= alpha:
-                    break
-            return score, move
-        else:
-            score = INFINITY
-            for m in board.legalMoves(self):
-                if ply == 0:
-                    return (self.score(board), m)
-                nb = deepcopy(board)
-                nb.makeMove(self, m)
-                s = self.alphaBetaMove(nb, ply-1, alpha, beta, True)
-                if s < score:
-                    score = s
-                    move = m
-                beta = min(beta, score)
-                if beta <= alpha:
-                    break
-            return score, move
+            return turn.score(board)
+        score = -INFINITY
+        a = -INFINITY
+        b = +INFINITY
+        for m in board.legalMoves(self):
+            if ply == 0:
+                #print "turn.score(board) in max value is: " + str(turn.score(board))
+                return turn.score(board)
+ 
+            # make a new player to play the other side
+            opponent = Player(self.opp, self.type, self.ply)
+            # Copy the board so that we don't ruin it
+            nextBoard = deepcopy(board)
+            nextBoard.makeMove(self, m)
+            s = opponent.minValueAlphaBeta(nextBoard, ply-1, turn, a, b)
+            #print "s in maxValue is: " + str(s)
+            if s > score:
+                score = s
+            # update alpha
+            a = max(a, score)
+            # check lower bounder
+            if a >= beta:
+                # the lower bounder is no better than parent's upper bounder
+                #print "beta pruning happen"
+                break
+        return score
+    
+    def minValueAlphaBeta(self, board, ply, turn, alpha, beta):
+        """ Find the minimax value with alpha-beta pruning for the next move for this player
+            at a given board configuation. Returns score."""
+        if board.gameOver():
+            return turn.score(board)
+        score = INFINITY
+        a = -INFINITY
+        b = +INFINITY
+        for m in board.legalMoves(self):
+            if ply == 0:
+                #print "turn.score(board) in min Value is: " + str(turn.score(board))
+                return turn.score(board)
+            # make a new player to play the other side
+            opponent = Player(self.opp, self.type, self.ply)
+            # Copy the board so that we don't ruin it
+            nextBoard = deepcopy(board)
+            nextBoard.makeMove(self, m)
+            s = opponent.maxValueAlphaBeta(nextBoard, ply-1, turn, a, b)
+            #print "s in minValue is: " + str(s)
+            if s < score:
+                score = s
+            # update beta
+            b = min(b, score)
+            # check upper bounder
+            if b <= alpha:
+                # the upper bounder is no better than parent's lower bounder
+                #print "alpha pruning happen"
+                break
+        return score
     
     
     def chooseMove(self, board):
@@ -208,19 +261,72 @@ class MancalaPlayer(Player):
         # Currently this function just calls Player's score
         # function.  You should replace the line below with your own code
         # for evaluating the board
-        own_cup_score = board.scoreCups[self.num-1]*2
-        side_cup = board.getPlayersCups(self.num)
-        blank_cup_score = 0
-        side_cup_score = 0
-        for cup_label in range(len(side_cup)):
-            side_cup_score = side_cup[cup_label]
-            if side_cup[cup_label] == 0 and 1 <= cup_label <= 2:
-                blank_cup_score += 0.3
-            elif side_cup[cup_label] == 0 and 3 <= cup_label <=5:
-                blank_cup_score += 0.5
-            else:
-                blank_cup_score += 0.1
-        tolscore = own_cup_score + side_cup_score + blank_cup_score
-        print "Calling score in MancalaPlayer"
-        return tolscore
-        
+        # own_cup_score = board.scoreCups[self.num-1]*2
+        # side_cup = board.getPlayersCups(self.num)
+        # blank_cup_score = 0
+        # side_cup_score = 0
+        # for cup_label in range(len(side_cup)):
+        #     side_cup_score = side_cup[cup_label]
+        #     if side_cup[cup_label] == 0 and 1 <= cup_label <= 2:
+        #         blank_cup_score += 0.3
+        #     elif side_cup[cup_label] == 0 and 3 <= cup_label <=5:
+        #         blank_cup_score += 0.5
+        #     else:
+        #         blank_cup_score += 0.1
+        # tolscore = own_cup_score + side_cup_score + blank_cup_score
+        # #print "Calling score in MancalaPlayer"
+        # return tolscore
+
+        # get the situation of one step left
+        oneStepLeftCup = [0]*(board.NCUPS-1)
+        oneStepLeftCup.append(1)
+        # get the # of stone in score cup
+        selfSideInScoreCup = board.scoreCups[self.num-1]
+        oppSideInScoreCup = board.scoreCups[self.opp-1]
+        # get the situation of one side
+        selfSideStoneInCup = board.getPlayersCups(self.num)
+        oppSideStoneInCup = board.getPlayersCups(self.opp)
+        # get the # of stone in one side by current situation
+        selfSideStoneInCupSum = sum(board.getPlayersCups(self.num))
+        oppSideStoneInCupSum = sum(board.getPlayersCups(self.opp))
+        # calculate the # of stone which will cross in next step and the max distance that influenced
+        selfSideStoneNextStepCross = 0
+        oppSideStoneNextStepCross = 0
+        selfSideInfluencedMax = 0
+        oppSideInfluencedMax = 0
+        for cupIndex in range(board.NCUPS):
+            overOneSide = selfSideStoneInCup[cupIndex] - board.NCUPS - cupIndex
+            while overOneSide > board.NCUPS + 1:
+                selfSideStoneNextStepCross += board.NCUPS + 1
+                overOneSide -= (board.NCUPS + 1)*2
+                selfSideInfluencedMax = board.NCUPS
+            selfSideStoneNextStepCross += overOneSide
+            selfSideInfluencedMax = max(selfSideInfluencedMax, overOneSide)
+
+            overOneSide = oppSideStoneInCup[cupIndex] - board.NCUPS - cupIndex
+            while overOneSide > board.NCUPS + 1:
+                oppSideStoneNextStepCross += board.NCUPS + 1
+                overOneSide -= (board.NCUPS + 1)*2
+                oppSideInfluencedMax = board.NCUPS
+            oppSideStoneNextStepCross += overOneSide
+            oppSideInfluencedMax = max(oppSideInfluencedMax, overOneSide)
+
+        if board.hasWon(self.num):
+            return 100.0
+        elif selfSideInScoreCup > board.NCUPS*4:
+            return 100.0
+        elif selfSideStoneNextStepCross == 0 and oppSideStoneInCup == oneStepLeftCup and selfSideStoneInCupSum + selfSideInScoreCup > board.NCUPS*4:
+            return 100.0
+        elif selfSideInfluencedMax <= board.NCUPS-2 and selfSideStoneInCup[board.NCUPS-1] == 1 and selfSideStoneInCup[board.NCUPS-2] == 2 and selfSideInScoreCup+3 > board.NCUPS*4:
+            return 100.0
+        elif board.hasWon(self.opp):
+            return 0.0
+        elif oppSideInScoreCup > board.NCUPS*4:
+            return 0.0
+        elif oppSideStoneNextStepCross == 0 and selfSideStoneInCup == oneStepLeftCup and oppSideStoneInCupSum + oppSideInScoreCup > board.NCUPS*4:
+            return 0.0
+        elif oppSideInfluencedMax <= board.NCUPS-2 and oppSideStoneInCup[board.NCUPS-1] == 1 and oppSideStoneInCup[board.NCUPS-2] == 2 and oppSideInScoreCup+3 > board.NCUPS*4:
+            return 0.0
+        else:
+            return selfSideInScoreCup * 2 + selfSideStoneInCupSum * 1 - selfSideStoneNextStepCross * 0.5 + oppSideStoneNextStepCross * 0.5
+            #return 50.0
