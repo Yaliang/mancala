@@ -11,6 +11,7 @@ from random import *
 from decimal import *
 from copy import *
 from MancalaBoard import *
+import time
 
 # a constant
 INFINITY = 1.0e400
@@ -220,23 +221,32 @@ class Player:
     
     def chooseMove(self, board):
         """ Returns the next move that this player wants to make """
+        startTime = time.time()
         if self.type == self.HUMAN:
             move = input("Please enter your move:")
             while not board.legalMove(self, move):
                 print move, "is not valid"
                 move = input( "Please enter your move" )
+            endTime = time.time()
+            print "Use time", endTime - startTime, " s"
             return move
         elif self.type == self.RANDOM:
             move = choice(board.legalMoves(self))
             print "chose move", move
+            endTime = time.time()
+            print "Use time", endTime - startTime, " s"
             return move
         elif self.type == self.MINIMAX:
             val, move = self.minimaxMove(board, self.ply)
             print "chose move", move, " with value", val
+            endTime = time.time()
+            print "Use time", endTime - startTime, " s"
             return move
         elif self.type == self.ABPRUNE:
             val, move = self.alphaBetaMove(board, self.ply)
             print "chose move", move, " with value", val
+            endTime = time.time()
+            print "Use time", endTime - startTime, " s"
             return move
         elif self.type == self.CUSTOM:
             # TODO: Implement a custom player
@@ -277,9 +287,6 @@ class MancalaPlayer(Player):
         # #print "Calling score in MancalaPlayer"
         # return tolscore
 
-        # get the situation of one step left
-        oneStepLeftCup = [0]*(board.NCUPS-1)
-        oneStepLeftCup.append(1)
         # get the # of stone in score cup
         selfSideInScoreCup = board.scoreCups[self.num-1]
         oppSideInScoreCup = board.scoreCups[self.opp-1]
@@ -310,12 +317,33 @@ class MancalaPlayer(Player):
                 oppSideInfluencedMax = board.NCUPS
             oppSideStoneNextStepCross += overOneSide
             oppSideInfluencedMax = max(oppSideInfluencedMax, overOneSide)
+        # calculate the # of stone which can be collect in opp's cup because of end in a emplty cup
+        selfSideEndInEmptyBonus = 0
+        oppSideEndInEmptyBonus = 0
+        for cupIndex in range(board.NCUPS):
+            circles = selfSideStoneInCup[cupIndex] / (2 * board.NCUPS + 1)
+            circleLeft = selfSideStoneInCup[cupIndex] % (2 * board.NCUPS + 1)
+            if (circles == 1) and (circleLeft == 0):
+                selfSideEndInEmptyBonus = max(selfSideEndInEmptyBonus, oppSideStoneInCup[board.NCUPS - 1 - cupIndex])
+            elif (circles == 0) and (circleLeft < board.NCUPS - cupIndex) and (circleLeft > 0) and (selfSideStoneInCup[cupIndex + circleLeft] == 0):
+                selfSideEndInEmptyBonus = max(selfSideEndInEmptyBonus, oppSideStoneInCup[board.NCUPS - 1 - cupIndex - circleLeft])
+            elif (circles == 0) and (circleLeft > 2 * board.NCUPS - cupIndex) and (selfSideStoneInCup[circleLeft + cupIndex - 2 * board.NCUPS -1] == 0):
+                selfSideEndInEmptyBonus = max(selfSideEndInEmptyBonus, oppSideStoneInCup[board.NCUPS - circleLeft - cupIndex + 2 * board.NCUPS])
+
+            circles = oppSideStoneInCup[cupIndex] / (2 * board.NCUPS + 1)
+            circleLeft = oppSideStoneInCup[cupIndex] % (2 * board.NCUPS + 1)
+            if (circles == 1) and (circleLeft == 0):
+                oppSideEndInEmptyBonus = max(oppSideEndInEmptyBonus, selfSideStoneInCup[board.NCUPS - 1 - cupIndex])
+            elif (circles == 0) and (circleLeft < board.NCUPS - cupIndex) and (circleLeft > 0) and (oppSideStoneInCup[cupIndex + circleLeft] == 0):
+                oppSideEndInEmptyBonus = max(oppSideEndInEmptyBonus, selfSideStoneInCup[board.NCUPS - 1 - cupIndex - circleLeft])
+            elif (circles == 0) and (circleLeft > 2 * board.NCUPS - cupIndex) and (oppSideStoneInCup[circleLeft + cupIndex - 2 * board.NCUPS -1] == 0):
+                oppSideEndInEmptyBonus = max(oppSideEndInEmptyBonus, selfSideStoneInCup[board.NCUPS - circleLeft - cupIndex + 2 * board.NCUPS])
 
         if board.hasWon(self.num):
             return 100.0
         elif selfSideInScoreCup > board.NCUPS*4:
             return 100.0
-        elif selfSideStoneNextStepCross == 0 and oppSideStoneInCup == oneStepLeftCup and selfSideStoneInCupSum + selfSideInScoreCup > board.NCUPS*4:
+        elif selfSideStoneNextStepCross == 0 and selfSideStoneInCupSum == 1 and selfSideStoneInCupSum + selfSideEndInEmptyBonus + selfSideInScoreCup > board.NCUPS*4:
             return 100.0
         elif selfSideInfluencedMax <= board.NCUPS-2 and selfSideStoneInCup[board.NCUPS-1] == 1 and selfSideStoneInCup[board.NCUPS-2] == 2 and selfSideInScoreCup+3 > board.NCUPS*4:
             return 100.0
@@ -323,10 +351,10 @@ class MancalaPlayer(Player):
             return 0.0
         elif oppSideInScoreCup > board.NCUPS*4:
             return 0.0
-        elif oppSideStoneNextStepCross == 0 and selfSideStoneInCup == oneStepLeftCup and oppSideStoneInCupSum + oppSideInScoreCup > board.NCUPS*4:
+        elif oppSideStoneNextStepCross == 0 and oppSideStoneInCupSum == 1 and oppSideStoneInCupSum + oppSideEndInEmptyBonus + oppSideInScoreCup > board.NCUPS*4:
             return 0.0
         elif oppSideInfluencedMax <= board.NCUPS-2 and oppSideStoneInCup[board.NCUPS-1] == 1 and oppSideStoneInCup[board.NCUPS-2] == 2 and oppSideInScoreCup+3 > board.NCUPS*4:
             return 0.0
         else:
-            return selfSideInScoreCup * 2 + selfSideStoneInCupSum * 1 - selfSideStoneNextStepCross * 0.5 + oppSideStoneNextStepCross * 0.5
+            return selfSideInScoreCup * 2 + selfSideStoneInCupSum * 1 - selfSideStoneNextStepCross * 0.5 + oppSideStoneNextStepCross * 0.5 + selfSideEndInEmptyBonus * 0.5 - oppSideEndInEmptyBonus * 0.5
             #return 50.0
