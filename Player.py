@@ -254,39 +254,25 @@ class Player:
             # function.  You may use whatever search algorithm and scoring
             # algorithm you like.  Remember that your player must make
             # each move in about 10 seconds or less.
-            print "Custom player not yet implemented"
-            return -1
+            val, move = self.customMove(board)
+            print "chose move", move, " with value", val
+            endTime = time.time()
+            print "Use time", endTime - startTime, " s"
+            return move
+            # print "Custom player not yet implemented"
+            # return -1
         else:
             print "Unknown player type"
             return -1
 
 
 # Note, you should change the name of this player to be your netid
-class MancalaPlayer(Player):
+class ywo130(Player):
     """ Defines a player that knows how to evaluate a Mancala gameboard
         intelligently """
 
     def score(self, board):
         """ Evaluate the Mancala board for this player """
-        # Currently this function just calls Player's score
-        # function.  You should replace the line below with your own code
-        # for evaluating the board
-        # own_cup_score = board.scoreCups[self.num-1]*2
-        # side_cup = board.getPlayersCups(self.num)
-        # blank_cup_score = 0
-        # side_cup_score = 0
-        # for cup_label in range(len(side_cup)):
-        #     side_cup_score = side_cup[cup_label]
-        #     if side_cup[cup_label] == 0 and 1 <= cup_label <= 2:
-        #         blank_cup_score += 0.3
-        #     elif side_cup[cup_label] == 0 and 3 <= cup_label <=5:
-        #         blank_cup_score += 0.5
-        #     else:
-        #         blank_cup_score += 0.1
-        # tolscore = own_cup_score + side_cup_score + blank_cup_score
-        # #print "Calling score in MancalaPlayer"
-        # return tolscore
-
         # get the # of stone in score cup
         selfSideInScoreCup = board.scoreCups[self.num-1]
         oppSideInScoreCup = board.scoreCups[self.opp-1]
@@ -317,7 +303,7 @@ class MancalaPlayer(Player):
                 oppSideInfluencedMax = board.NCUPS
             oppSideStoneNextStepCross += overOneSide
             oppSideInfluencedMax = max(oppSideInfluencedMax, overOneSide)
-        # calculate the # of stone which can be collect in opp's cup because of end in a emplty cup
+        # calculate the # of stone which can be collect in opp's cup because of bonus of ending in an emplty cup
         selfSideEndInEmptyBonus = 0
         oppSideEndInEmptyBonus = 0
         for cupIndex in range(board.NCUPS):
@@ -356,5 +342,8 @@ class MancalaPlayer(Player):
         elif oppSideInfluencedMax <= board.NCUPS-2 and oppSideStoneInCup[board.NCUPS-1] == 1 and oppSideStoneInCup[board.NCUPS-2] == 2 and oppSideInScoreCup+3 > board.NCUPS*4:
             return 0.0
         else:
-            return selfSideInScoreCup * 2 + selfSideStoneInCupSum * 1 - selfSideStoneNextStepCross * 0.5 + oppSideStoneNextStepCross * 0.5 + selfSideEndInEmptyBonus * 0.5 - oppSideEndInEmptyBonus * 0.5
-            #return 50.0
+            return selfSideInScoreCup * 3 + selfSideStoneInCupSum * 1 - selfSideStoneNextStepCross * 0.5 + oppSideStoneNextStepCross * 0.5 + selfSideEndInEmptyBonus * 2 - oppSideEndInEmptyBonus * 2
+    
+    def customMove(self, board):
+        """ 8-depth searching with AB pruning """
+        return self.alphaBetaMove(board, 8)
